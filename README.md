@@ -73,7 +73,7 @@ Supported formats: `.mp3`, `.wav`, `.flac`, `.m4a`, `.ogg`
 
 ## LoRA fine-tuning pipeline
 
-Fine-tunes Whisper large-v3 on the [DALI v2](https://zenodo.org/record/2658420) lyric dataset using LoRA (Low-Rank Adaptation) applied to the decoder's Q/V projections only.
+Fine-tunes Whisper large-v3 on the [DALI v2](https://zenodo.org/records/2577915) lyric dataset ([GitHub](https://github.com/gabolsgabs/DALI)) using LoRA (Low-Rank Adaptation) applied to the decoder's Q/V projections only.
 
 ### Pipeline stages
 
@@ -91,16 +91,17 @@ adapter_config.json + adapter_model.safetensors + eval_results.json
 pip install -e ".[training]"
 ```
 
-Requires a DALI audio token (register at https://zenodo.org/record/2658420):
+DALI annotation data must be downloaded manually:
 
-```bash
-export DALI_AUDIO_TOKEN=your_token_here
-```
+1. Request access at [Zenodo](https://zenodo.org/records/2577915) (requires registration and institutional affiliation)
+2. Extract the downloaded gz files into `data/dali/raw/` so that `data/dali/raw/info/DALI_DATA_INFO.gz` exists
+
+Audio is then fetched from YouTube by the download stage via `dali_code.get_audio()`.
 
 ### Training
 
 ```bash
-# Download DALI dataset
+# Download audio from YouTube (annotations must already be in data/dali/raw/)
 python -m training.download --data-dir data/dali/raw
 
 # Preprocess (vocal separation + chunking + alignment)
