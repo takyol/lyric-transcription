@@ -48,13 +48,14 @@ def _transcript_for_chunk(
 
 
 def _load_dali_words(annotation_path: Path) -> list[dict]:
-    """Load word-level annotations from a DALI pickle file.
+    """Load word-level annotations from a DALI annotation file (gzip-compressed pickle).
 
     Each returned dict has the shape: {"text": str, "time": [start_sec, end_sec]}.
-    The DALI pickle stores a DALI entry object at top level; words live at
+    The DALI entry object lives at top level; words are at
     entry.annotations['annot']['words'].
     """
-    with open(annotation_path, "rb") as f:
+    import gzip
+    with gzip.open(annotation_path, "rb") as f:
         entry = pickle.load(f)
     return entry.annotations["annot"]["words"]
 
@@ -107,11 +108,13 @@ def preprocess(config: TrainingConfig) -> None:
         song_id = song_dir.name
         try:
             audio_files = list(song_dir.glob("*.wav")) + list(song_dir.glob("*.mp3"))
-            ann_files = list(song_dir.glob("*.pkl"))
+            # DALI annotation files have no extension — match by song ID name
+            ann_files = [f for f in song_dir.iterdir()
+                         if f.is_file() and f.suffix == "" and f.name == song_id]
             if not audio_files:
                 raise ValueError("No audio file found")
             if not ann_files:
-                raise ValueError("No annotation (.pkl) file found")
+                raise ValueError("No annotation file found (expected extension-less file named after song ID)")
 
             vocals_path = separate(audio_files[0], song_dir)
             audio, sr = _read_audio(vocals_path)
