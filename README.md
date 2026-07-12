@@ -167,6 +167,18 @@ Checkpoints are saved to `models/lora/checkpoints/checkpoint-<step>` every `--ev
 
 The encoder is fully frozen. Only decoder Q/V projections receive LoRA adapters (~1–2% of total parameters).
 
+### Using a trained adapter
+
+```bash
+# Final adapter
+python -m training.infer song.wav --adapter-dir models/lora
+
+# A specific mid-training checkpoint
+python -m training.infer song.wav --adapter-dir models/lora/checkpoints/checkpoint-500
+```
+
+The adapter only works with the HF base model it was trained on (`--model-name`, default `openai/whisper-large-v3`).
+
 ### Evaluation metrics
 
 - **WER**: Word Error Rate after lowercasing and stripping punctuation
