@@ -17,6 +17,12 @@ def _to_phonemes(text: str) -> str:
     """Convert normalized text to a space-joined phoneme string via g2p_en."""
     global _g2p
     if _g2p is None:
+        # g2p_en downloads NLTK's old resource name; newer NLTK needs the _eng variant
+        import nltk
+        try:
+            nltk.data.find("taggers/averaged_perceptron_tagger_eng")
+        except LookupError:
+            nltk.download("averaged_perceptron_tagger_eng", quiet=True)
         from g2p_en import G2p
         _g2p = G2p()
     phonemes = _g2p(text)
