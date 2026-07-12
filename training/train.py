@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import torch
-from peft import LoraConfig, TaskType, get_peft_model
+from peft import LoraConfig, get_peft_model
 from .config import TrainingConfig
 from .exceptions import TrainingError
 
@@ -21,7 +21,9 @@ def _build_lora_model(base_model, config: TrainingConfig):
         target_modules=["q_proj", "v_proj"],
         lora_dropout=config.lora_dropout,
         bias="none",
-        task_type=TaskType.CAUSAL_LM,
+        # No task_type: the task-typed PEFT wrappers inject input_ids=None into
+        # the forward kwargs, which collides with Whisper's decoder_input_ids
+        # inside WhisperModel. The generic PeftModel forwards args transparently.
     )
     model = get_peft_model(base_model, lora_config)
 
@@ -171,10 +173,13 @@ def train(config: TrainingConfig) -> None:
     # Final evaluation on test split via direct generation (bypasses Trainer generate bug)
     from .evaluate import compute_wer, compute_per
     model.eval()
-    device = next(model.parameters()).device
+    param = next(model.parameters())
+    device, dtype = param.device, param.dtype
     preds, refs = [], []
     for example in dataset["test"]:
-        input_features = torch.tensor(example["input_features"]).unsqueeze(0).to(device)
+        input_features = (
+            torch.tensor(example["input_features"]).unsqueeze(0).to(device, dtype=dtype)
+        )
         with torch.no_grad():
             predicted_ids = model.generate(input_features, max_new_tokens=225)
         preds.append(processor.tokenizer.decode(predicted_ids[0], skip_special_tokens=True))
