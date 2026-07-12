@@ -36,14 +36,23 @@ Each stage caches its output to disk. Re-running skips completed stages automati
 
 ### Installation
 
-Requires Python ≥ 3.10 and `ffmpeg` on your PATH.
+Requires Python ≥ 3.11, `ffmpeg` on your PATH, and [`uv`](https://github.com/astral-sh/uv) (recommended over pip for faster dependency resolution).
 
+**macOS / Linux:**
 ```bash
-# Install ffmpeg (macOS)
-brew install ffmpeg
-
-# Install the package
+brew install ffmpeg      # macOS
+pip install uv
 pip install -e .
+```
+
+**Windows (conda):**
+```bash
+conda create -n whisper-lyrics python=3.11
+conda activate whisper-lyrics
+pip install uv
+# Install ffmpeg via conda or https://ffmpeg.org/download.html
+conda install ffmpeg
+uv pip install -e .
 ```
 
 ### Usage
@@ -87,8 +96,20 @@ adapter_config.json + adapter_model.safetensors + eval_results.json
 
 ### Installation
 
+**Windows (conda):**
 ```bash
-pip install -e ".[training]"
+conda create -n whisper-lyrics python=3.11
+conda activate whisper-lyrics
+pip install uv
+uv pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cu121
+uv pip install demucs==4.0.1 openai-whisper
+uv pip install -e ".[training]"
+```
+
+**macOS / Linux:**
+```bash
+pip install uv
+uv pip install -e ".[training]"
 ```
 
 DALI annotation data must be downloaded manually:
