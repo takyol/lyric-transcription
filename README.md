@@ -50,8 +50,8 @@ pip install -e .
 conda create -n whisper-lyrics python=3.11
 conda activate whisper-lyrics
 pip install uv
-# Install ffmpeg via conda or https://ffmpeg.org/download.html
 conda install ffmpeg
+uv pip install torch==2.4.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu121
 uv pip install -e .
 ```
 
@@ -101,7 +101,7 @@ adapter_config.json + adapter_model.safetensors + eval_results.json
 conda create -n whisper-lyrics python=3.11
 conda activate whisper-lyrics
 pip install uv
-uv pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch==2.4.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu121
 uv pip install demucs==4.0.1 openai-whisper
 uv pip install -e ".[training]"
 ```

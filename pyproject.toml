@@ -9,7 +9,9 @@ requires-python = ">=3.11"
 dependencies = [
     "openai-whisper",
     "demucs>=4.0.1",
-    "torch>=2.3,<3",
+    "torch>=2.4,<3",
+    "torchaudio>=2.4,<3",
+    "numpy>=1.24,<2",
 ]
 
 [project.scripts]
@@ -24,6 +26,7 @@ training = [
     "jiwer>=3.0",
     "g2p_en>=2.1",
     "soundfile>=0.12",
+    "resampy>=0.4",
     "accelerate>=0.26",
     "dali-dataset",
     "yt-dlp",

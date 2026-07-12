@@ -1,4 +1,3 @@
-import gzip
 import pickle
 import subprocess
 import sys
@@ -18,7 +17,7 @@ def _get_youtube_url(song_dir: Path, song_id: str) -> str:
     ann_file = song_dir / song_id
     if not ann_file.exists():
         raise DownloadError(f"Annotation file not found: {ann_file}")
-    with gzip.open(ann_file, "rb") as f:
+    with open(ann_file, "rb") as f:
         entry = pickle.load(f)
     return entry.info["audio"]["url"]
 

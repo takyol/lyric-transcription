@@ -4,9 +4,14 @@ import sys
 from pathlib import Path
 from typing import Optional
 import numpy as np
+import soundfile as sf
 from .config import TrainingConfig
 from .exceptions import PreprocessError
-import soundfile as sf 
+
+try:
+    from whisper_lyrics.stages.separate import separate
+except ImportError:
+    separate = None
 
 
 def _chunk_audio(
@@ -48,14 +53,13 @@ def _transcript_for_chunk(
 
 
 def _load_dali_words(annotation_path: Path) -> list[dict]:
-    """Load word-level annotations from a DALI annotation file (gzip-compressed pickle).
+    """Load word-level annotations from a DALI pickle file (no extension).
 
     Each returned dict has the shape: {"text": str, "time": [start_sec, end_sec]}.
     The DALI entry object lives at top level; words are at
     entry.annotations['annot']['words'].
     """
-    import gzip
-    with gzip.open(annotation_path, "rb") as f:
+    with open(annotation_path, "rb") as f:
         entry = pickle.load(f)
     return entry.annotations["annot"]["words"]
 
@@ -97,25 +101,33 @@ def preprocess(config: TrainingConfig) -> None:
         )
 
     _SKIP_DIRS = {"audio", "info"}
+    audio_dir = raw_dir / "audio"
     song_dirs = sorted(d for d in raw_dir.iterdir() if d.is_dir() and d.name not in _SKIP_DIRS)
     if not song_dirs:
         raise PreprocessError(f"No songs found in {raw_dir}")
+
+    # Songs with no downloaded audio are skipped silently — not counted as errors
+    song_dirs_with_audio = [
+        d for d in song_dirs
+        if audio_dir.exists() and any(audio_dir.glob(f"{d.name}.*"))
+    ]
+    skipped = len(song_dirs) - len(song_dirs_with_audio)
+    if skipped:
+        print(f"Skipping {skipped} songs with no downloaded audio.")
+    if not song_dirs_with_audio:
+        raise PreprocessError(f"No songs have downloaded audio in {audio_dir}.")
 
     chunks_dir.mkdir(parents=True, exist_ok=True)
     records: list[dict] = []
     errors: list[dict] = []
 
-    for song_dir in song_dirs:
+    for song_dir in song_dirs_with_audio:
         song_id = song_dir.name
         try:
-            # Audio is downloaded to raw_dir/audio/ by training.download
-            audio_dir = raw_dir / "audio"
-            audio_files = list(audio_dir.glob(f"{song_id}.*")) if audio_dir.exists() else []
+            audio_files = list(audio_dir.glob(f"{song_id}.*"))
             # DALI annotation files have no extension — file named after song ID inside song dir
             ann_files = [f for f in song_dir.iterdir()
                          if f.is_file() and f.suffix == "" and f.name == song_id]
-            if not audio_files:
-                raise ValueError(f"No audio file found in {audio_dir} for song {song_id}")
             if not ann_files:
                 raise ValueError("No annotation file found (expected extension-less file named after song ID)")
 
