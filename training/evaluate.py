@@ -58,6 +58,10 @@ def compute_metrics_fn(tokenizer) -> Callable:
         import numpy as np
 
         pred_ids = pred.predictions
+        # Whisper returns a tuple of outputs when predict_with_generate=False;
+        # the first element is the logits
+        if isinstance(pred_ids, tuple):
+            pred_ids = pred_ids[0]
         label_ids = pred.label_ids
 
         # When predict_with_generate=False, predictions are logits shape (B, T, V)
