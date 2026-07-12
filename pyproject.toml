@@ -26,6 +26,7 @@ training = [
     "soundfile>=0.12",
     "accelerate>=0.26",
     "dali-dataset",
+    "yt-dlp",
 ]
 
 [tool.setuptools.packages.find]
