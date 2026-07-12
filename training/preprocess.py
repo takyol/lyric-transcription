@@ -96,7 +96,8 @@ def preprocess(config: TrainingConfig) -> None:
             "Ensure whisper_lyrics is installed: pip install -e ."
         )
 
-    song_dirs = sorted(d for d in raw_dir.iterdir() if d.is_dir())
+    _SKIP_DIRS = {"audio", "info"}
+    song_dirs = sorted(d for d in raw_dir.iterdir() if d.is_dir() and d.name not in _SKIP_DIRS)
     if not song_dirs:
         raise PreprocessError(f"No songs found in {raw_dir}")
 
@@ -107,16 +108,18 @@ def preprocess(config: TrainingConfig) -> None:
     for song_dir in song_dirs:
         song_id = song_dir.name
         try:
-            audio_files = list(song_dir.glob("*.wav")) + list(song_dir.glob("*.mp3"))
-            # DALI annotation files have no extension — match by song ID name
+            # Audio is downloaded to raw_dir/audio/ by training.download
+            audio_dir = raw_dir / "audio"
+            audio_files = list(audio_dir.glob(f"{song_id}.*")) if audio_dir.exists() else []
+            # DALI annotation files have no extension — file named after song ID inside song dir
             ann_files = [f for f in song_dir.iterdir()
                          if f.is_file() and f.suffix == "" and f.name == song_id]
             if not audio_files:
-                raise ValueError("No audio file found")
+                raise ValueError(f"No audio file found in {audio_dir} for song {song_id}")
             if not ann_files:
                 raise ValueError("No annotation file found (expected extension-less file named after song ID)")
 
-            vocals_path = separate(audio_files[0], song_dir)
+            vocals_path = separate(audio_files[0], raw_dir / "audio")
             audio, sr = _read_audio(vocals_path)
             words = _load_dali_words(ann_files[0])
 

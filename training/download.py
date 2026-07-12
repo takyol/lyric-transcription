@@ -17,7 +17,7 @@ def download(data_dir: Path) -> None:
     them manually from https://zenodo.org/records/2577915 after requesting access.
     Audio is then fetched from YouTube via dali_code.get_audio().
     """
-    data_dir = Path(data_dir)
+    data_dir = Path(data_dir).resolve()  # DALI requires absolute paths
     info_file = data_dir / _INFO_SUBPATH
 
     if not info_file.exists():
