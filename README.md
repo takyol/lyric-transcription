@@ -40,12 +40,12 @@ Requires Python ≥ 3.11, `ffmpeg` on your PATH, and [`uv`](https://github.com/a
 
 **macOS / Linux:**
 ```bash
-brew install ffmpeg      # macOS
+brew install ffmpeg
 pip install uv
 pip install -e .
 ```
 
-**Windows (conda):**
+**Windows:**
 ```bash
 conda create -n whisper-lyrics python=3.11
 conda activate whisper-lyrics
@@ -58,7 +58,7 @@ uv pip install -e .
 ### Usage
 
 ```bash
-# Full pipeline (separate → transcribe → cleanup)
+# Full pipeline (separate, transcribe, cleanup)
 whisper-lyrics song.mp3
 
 # Run a single stage
@@ -88,7 +88,7 @@ Fine-tunes Whisper large-v3 on the [DALI v2](https://zenodo.org/records/2577915)
 
 ```
 
-[1] download    : fetches DALI audio + annotations via DALI_python_core
+[1] download    : fetches audio from YouTube via yt-dlp (annotations come from Zenodo, manual)
 [2] preprocess  : Demucs vocal separation → 30s chunks → HF DatasetDict on disk
 [3] train       : Seq2SeqTrainer with LoRA adapter, saves to models/lora/
 adapter_config.json + adapter_model.safetensors + eval_results.json
@@ -96,7 +96,7 @@ adapter_config.json + adapter_model.safetensors + eval_results.json
 
 ### Installation
 
-**Windows (conda):**
+**Windows:**
 ```bash
 conda create -n whisper-lyrics python=3.11
 conda activate whisper-lyrics
@@ -115,9 +115,18 @@ uv pip install -e ".[training]"
 DALI annotation data must be downloaded manually:
 
 1. Request access at [Zenodo](https://zenodo.org/records/2577915) (requires registration and institutional affiliation)
-2. Extract the downloaded gz files into `data/dali/raw/` so that `data/dali/raw/info/DALI_DATA_INFO.gz` exists
+2. Extract the annotations so each song sits in its own folder, named by song ID:
 
-Audio is then fetched from YouTube by the download stage via `dali_code.get_audio()`.
+```
+data/dali/raw/
+  <song_id>/
+    <song_id>         DALI annotation (pickle, no extension)
+  <song_id>/
+    <song_id>
+  ...
+```
+
+The download stage reads the YouTube URL from each annotation and fetches audio with `yt-dlp` (requires `ffmpeg` on PATH) into `data/dali/raw/audio/<song_id>.wav`. Songs whose YouTube video is unavailable are reported and skipped; preprocess ignores them too.
 
 ### Training
 
@@ -143,6 +152,8 @@ python -m training.train \
   --eval-steps 500
 ```
 
+Checkpoints are saved to `models/lora/checkpoints/checkpoint-<step>` every `--eval-steps` steps (evaluate first, then save). The final adapter and `eval_results.json` land in `models/lora/`.
+
 ### LoRA configuration
 
 | Parameter | Default | Description |
@@ -158,8 +169,8 @@ The encoder is fully frozen. Only decoder Q/V projections receive LoRA adapters 
 
 ### Evaluation metrics
 
-- **WER** — Word Error Rate after lowercasing and stripping punctuation
-- **PER** — Phoneme Error Rate (WER computed on g2p_en phoneme sequences; rewards phonemically similar transcriptions)
+- **WER**: Word Error Rate after lowercasing and stripping punctuation
+- **PER**: Phoneme Error Rate (WER computed on g2p_en phoneme sequences; rewards phonemically similar transcriptions)
 
 Results are written to `models/lora/eval_results.json`.
 
