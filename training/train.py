@@ -21,7 +21,7 @@ def _build_lora_model(base_model, config: TrainingConfig):
         target_modules=["q_proj", "v_proj"],
         lora_dropout=config.lora_dropout,
         bias="none",
-        task_type=TaskType.SEQ_2_SEQ_LM,
+        task_type=TaskType.CAUSAL_LM,
     )
     model = get_peft_model(base_model, lora_config)
 
@@ -144,8 +144,7 @@ def train(config: TrainingConfig) -> None:
         load_best_model_at_end=True,
         metric_for_best_model="wer",
         greater_is_better=False,
-        predict_with_generate=True,
-        generation_max_length=225,
+        predict_with_generate=False,
         logging_steps=25,
         report_to="none",
         push_to_hub=False,
@@ -156,7 +155,7 @@ def train(config: TrainingConfig) -> None:
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset["validation"],
-        tokenizer=processor.tokenizer,
+        processing_class=processor.tokenizer,
         data_collator=collator,
         compute_metrics=compute_metrics_fn(processor.tokenizer),
     )
@@ -169,11 +168,20 @@ def train(config: TrainingConfig) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(str(output_dir))
 
-    # Final evaluation on test split
-    test_output = trainer.predict(dataset["test"])
-    metrics = test_output.metrics
-    wer_val = metrics.get("test_wer", metrics.get("wer", float("nan")))
-    per_val = metrics.get("test_per", metrics.get("per", float("nan")))
+    # Final evaluation on test split via direct generation (bypasses Trainer generate bug)
+    from .evaluate import compute_wer, compute_per
+    model.eval()
+    device = next(model.parameters()).device
+    preds, refs = [], []
+    for example in dataset["test"]:
+        input_features = torch.tensor(example["input_features"]).unsqueeze(0).to(device)
+        with torch.no_grad():
+            predicted_ids = model.generate(input_features, max_new_tokens=225)
+        preds.append(processor.tokenizer.decode(predicted_ids[0], skip_special_tokens=True))
+        label_ids = [t for t in example["labels"] if t != -100]
+        refs.append(processor.tokenizer.decode(label_ids, skip_special_tokens=True))
+    wer_val = compute_wer(preds, refs)
+    per_val = compute_per(preds, refs)
 
     eval_results = {
         "split": "test",

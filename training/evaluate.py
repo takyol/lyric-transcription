@@ -48,12 +48,23 @@ def compute_per(predictions: list[str], references: list[str]) -> float:
 
 
 def compute_metrics_fn(tokenizer) -> Callable:
-    """Return a compute_metrics callable for use with Seq2SeqTrainer."""
+    """Return a compute_metrics callable for use with Seq2SeqTrainer.
+
+    Works with predict_with_generate=False: predictions are raw logits (3D),
+    so we take argmax for greedy decoding before computing WER/PER.
+    """
 
     def compute_metrics(pred) -> dict[str, float]:
+        import numpy as np
+
         pred_ids = pred.predictions
         label_ids = pred.label_ids
 
+        # When predict_with_generate=False, predictions are logits shape (B, T, V)
+        if pred_ids.ndim == 3:
+            pred_ids = pred_ids.argmax(-1)
+
+        label_ids = label_ids.copy()
         label_ids[label_ids == -100] = tokenizer.pad_token_id
 
         pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
