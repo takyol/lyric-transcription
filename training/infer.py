@@ -38,7 +38,10 @@ def main() -> None:
         device=0 if use_cuda else -1,
         torch_dtype=dtype,
     )
-    result = asr(args.audio, return_timestamps=True)
+    # Decode audio ourselves so transformers never needs torchcodec/ffmpeg bindings
+    import librosa
+    audio, _ = librosa.load(args.audio, sr=16000, mono=True)
+    result = asr({"raw": audio, "sampling_rate": 16000}, return_timestamps=True)
     print(result["text"].strip())
 
 
