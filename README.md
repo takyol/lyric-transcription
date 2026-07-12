@@ -74,7 +74,12 @@ whisper-lyrics song.mp3 --output ./lyrics/song.json --cache-dir ./cache
 
 # Force rerun all stages
 whisper-lyrics song.mp3 --force
+
+# Transcribe with a fine-tuned LoRA adapter (HF Whisper + PEFT instead of openai-whisper)
+whisper-lyrics song.mp3 --adapter-dir models/lora
 ```
+
+In adapter mode the output format is identical, with one caveat: the HF path exposes no per-word confidence, so `confidence` is always `1.0` and `low_confidence` always `false`. Note the `.raw.json` cache is shared between engines — use `--force` when switching between adapter and stock mode.
 
 Supported formats: `.mp3`, `.wav`, `.flac`, `.m4a`, `.ogg`
 
@@ -170,14 +175,17 @@ The encoder is fully frozen. Only decoder Q/V projections receive LoRA adapters 
 ### Using a trained adapter
 
 ```bash
-# Final adapter
+# Full pipeline with adapter (writes lyrics JSON)
+whisper-lyrics song.mp3 --adapter-dir models/lora
+
+# Quick smoke test (prints text only)
 python -m training.infer song.wav --adapter-dir models/lora
 
-# A specific mid-training checkpoint
+# A specific mid-training checkpoint works too
 python -m training.infer song.wav --adapter-dir models/lora/checkpoints/checkpoint-500
 ```
 
-The adapter only works with the HF base model it was trained on (`--model-name`, default `openai/whisper-large-v3`).
+The adapter only works with the HF base model it was trained on (`openai/whisper-large-v3` by default). Since training data is Demucs-separated vocals, the full `whisper-lyrics` pipeline (which separates first) is the intended path.
 
 ### Evaluation metrics
 
@@ -202,6 +210,7 @@ src/whisper_lyrics/       # inference pipeline
   stages/
     separate.py           # Demucs vocal separation
     transcribe.py         # Whisper transcription
+    transcribe_hf.py      # HF Whisper + LoRA adapter transcription
     cleanup.py            # segment dedup + confidence flagging
   pipeline.py             # orchestrator with caching
   cli.py                  # whisper-lyrics CLI entry point

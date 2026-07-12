@@ -13,6 +13,7 @@ def run_pipeline(
     model_name: str = "large-v3",
     force: bool = False,
     stage: str | None = None,
+    adapter_dir: Path | None = None,
 ) -> Path:
     if stage is not None and stage not in _VALID_STAGES:
         raise ValueError(f"Unknown stage {stage!r}. Must be one of: {', '.join(sorted(_VALID_STAGES))}")
@@ -28,7 +29,12 @@ def run_pipeline(
         vocals_path = cache_dir / f"{input_path.stem}.vocals.wav"
 
     if stage is None or stage == "transcribe":
-        raw_json_path = transcribe(vocals_path, cache_dir, model_name)
+        if adapter_dir is not None:
+            # Lazy import: the HF/PEFT stack is only needed in adapter mode
+            from .stages.transcribe_hf import transcribe_hf
+            raw_json_path = transcribe_hf(vocals_path, cache_dir, model_name, adapter_dir)
+        else:
+            raw_json_path = transcribe(vocals_path, cache_dir, model_name)
         if stage == "transcribe":
             return raw_json_path
     else:
