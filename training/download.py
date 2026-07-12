@@ -39,10 +39,16 @@ def download(data_dir: Path) -> None:
             "dali-dataset is not installed. Run: pip install dali-dataset"
         )
 
+    _SKIP_DIRS = {"audio", "info"}
+    song_ids = [d.name for d in data_dir.iterdir() if d.is_dir() and d.name not in _SKIP_DIRS]
+    if not song_ids:
+        raise DownloadError(f"No song ID directories found in {data_dir}.")
+    print(f"Downloading audio for {len(song_ids)} songs: {song_ids}")
+
     try:
         dali_info = dali_code.get_info(str(info_file))
         audio_dir.mkdir(parents=True, exist_ok=True)
-        errors = dali_code.get_audio(dali_info, str(audio_dir))
+        errors = dali_code.get_audio(dali_info, str(audio_dir), keep=song_ids)
     except DownloadError:
         raise
     except Exception as e:
